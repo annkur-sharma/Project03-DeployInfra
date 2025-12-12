@@ -7,6 +7,7 @@ resource "azurerm_resource_group" "child_resource_group" {
 }
 
 resource "azurerm_storage_account" "sa" {
+  depends_on = [ azurerm_resource_group.child_resource_group ]
   for_each = var.var_child_resource_group
   
   name                     = "annkursaprod12321"
