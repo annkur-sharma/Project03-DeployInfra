@@ -369,7 +369,8 @@ stages:
         timestamp=$(date +"%Y-%m-%d-%H-%M-%S")
         build_number=$(Build.BuildNumber)
         INFRACOST_JSON_FILE="infracost-report-${build_number}-${timestamp}.json"
-
+        echo "##vso[task.setvariable variable=INFRACOST_JSON_FILE]$INFRACOST_JSON_FILE"
+        
         echo "Executing: infracost breakdown --path=. --format json --out-file $INFRACOST_JSON_FILE"
         infracost breakdown \
             --path . \
@@ -393,23 +394,20 @@ stages:
     - script: |
         echo "Checking for Infracost report before publishing..."
         echo "Checking Infracost report at: "
-        echo ${{ variables.varWorkingDirectory }}
-        cd ${{ variables.varWorkingDirectory }}
-        ls -l "$INFRACOST_JSON_FILE"
         echo "Checking all files at: "
         echo ${{ variables.varWorkingDirectory }}
         ls -l
-        if [ -f "${{ variables.varWorkingDirectory }}/$INFRACOST_JSON_FILE" ]; then
+        if [ -f "${{ variables.varWorkingDirectory }}/$(INFRACOST_JSON_FILE)" ]; then
           echo "✅ Infracost report found, ready for publish."
         else
-          echo "⚠️ No Infracost report found at ${{ variables.varWorkingDirectory }}/$INFRACOST_JSON_FILE"
-          echo "{}" > ${{ variables.varWorkingDirectory }}/$INFRACOST_JSON_FILE
+          echo "⚠️ No Infracost report found at ${{ variables.varWorkingDirectory }}/$(INFRACOST_JSON_FILE)"
+          echo "{}" > ${{ variables.varWorkingDirectory }}/$(INFRACOST_JSON_FILE)
         fi
       displayName: "Verify Infracost Report File"
 
     # Publish Infracost Report (same pattern as Trivy)
-    - publish: ${{ variables.varWorkingDirectory }}/INFRACOST_JSON_FILE
-      artifact: "$INFRACOST_JSON_FILE"
+    - publish: ${{ variables.varWorkingDirectory }}/$(INFRACOST_JSON_FILE)
+      artifact: $(INFRACOST_JSON_FILE)
       displayName: "Publish Infracost Report"
 
 - stage: FeatureBranch_Apply_Approval
