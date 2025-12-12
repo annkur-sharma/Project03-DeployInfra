@@ -7,7 +7,7 @@ var_root_dev_resource_group = {
       owner        = "annkur"
       cost_center  = "1234"
       project      = "my-app"
-      business_unit = "devops"
+      Service = "devops"
     }
   }
 }
@@ -27,7 +27,7 @@ var_root_dev_vnet = {
       owner        = "annkur"
       cost_center  = "1234"
       project      = "my-app"
-      business_unit = "devops"
+      Service = "devops"
     }
   }
 }
