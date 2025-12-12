@@ -121,7 +121,7 @@ stages:
         echo "Verifying Infracost report..."
         if [ -f infracost-report.json ]; then
           echo "✅ Infracost report generated successfully"
-          infracost upload --path infracost.json
+          infracost upload --path infracost-report.json
           echo "✅ Infracost report uploaded successfully"
         else
           echo "❌ Infracost did NOT generate a report!"
