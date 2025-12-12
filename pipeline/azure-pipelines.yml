@@ -19,7 +19,7 @@ parameters:
 
 variables:
 - name: varServiceConnection
-  value: ServiceConnection-09NOV2025
+  value: SC-09DEC2025
 
 - name: varbackendAzureRmResourceGroupName
   value: ankurbackend01
@@ -32,12 +32,12 @@ variables:
   value: ${{ variables.varServiceConnection }}
 
 - ${{ if eq(parameters.environment, 'dev') }}:
-  - group: Project02-VariableGroup-Dev
+  - group: Project03-VariableGroup-Dev
   - name: varWorkingDirectory
     value: '$(System.DefaultWorkingDirectory)/infra/dev'
 
 - ${{ if eq(parameters.environment, 'staging') }}:
-  - group: Project02-VariableGroup-Staging
+  - group: Project03-VariableGroup-Staging
   - name: varWorkingDirectory
     value: '$(System.DefaultWorkingDirectory)/infra/staging'
 
