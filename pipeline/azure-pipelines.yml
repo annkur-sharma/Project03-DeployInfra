@@ -392,6 +392,12 @@ stages:
     # Check and Copy Infracost Report
     - script: |
         echo "Checking for Infracost report before publishing..."
+        echo "Checking Infracost report at: "
+        echo ${{ variables.varWorkingDirectory }}
+        ls -l "$INFRACOST_JSON_FILE"
+        echo "Checking all files at: "
+        echo ${{ variables.varWorkingDirectory }}
+        ls -l
         if [ -f "${{ variables.varWorkingDirectory }}/$INFRACOST_JSON_FILE" ]; then
           echo "✅ Infracost report found, ready for publish."
         else
