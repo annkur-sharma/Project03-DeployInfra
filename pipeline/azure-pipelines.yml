@@ -1,0 +1,461 @@
+trigger:
+  branches:
+    include:
+      - main
+      - feature/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+  # name: 'AgentPool-09NOV2025'
+
+parameters:
+  - name: environment
+    displayName: ENVIRONMENT
+    type: string
+    default: dev
+    values:
+      - dev
+      - staging
+
+variables:
+- name: varServiceConnection
+  value: ServiceConnection-09NOV2025
+
+- name: varbackendAzureRmResourceGroupName
+  value: ankurbackend01
+
+- name: varbackendAzureRmStorageAccountName
+  value: ankur01storage01ad01
+
+# Selected values based on parameter: dev or staging
+- name: selected_service_connection
+  value: ${{ variables.varServiceConnection }}
+
+- ${{ if eq(parameters.environment, 'dev') }}:
+  - group: Project02-VariableGroup-Dev
+  - name: varWorkingDirectory
+    value: '$(System.DefaultWorkingDirectory)/infra/dev'
+
+- ${{ if eq(parameters.environment, 'staging') }}:
+  - group: Project02-VariableGroup-Staging
+  - name: varWorkingDirectory
+    value: '$(System.DefaultWorkingDirectory)/infra/staging'
+
+
+stages:
+# =====================================
+# Main branch flow
+# =====================================
+# Stage: terraform install > terraform init
+- stage: MainBranchMerge_TerraformInit
+  displayName: "Branch: (main) - Stage: Terraform Init"
+  condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+  jobs:
+  - job: Main_Init
+    steps:
+    # TEMPLATE --> Terraform INSTALL & INIT
+    - template: templates/terraform-init.yml
+      parameters:
+        workingDirectory: ${{ variables.varWorkingDirectory }}
+        serviceConnection: ${{ variables.varServiceConnection }}
+        backendRg: ${{ variables.varbackendAzureRmResourceGroupName }}
+        backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
+        backendContainer: $(selectedVG_varbackendAzureRmContainerName)
+        backendKey: $(selectedVG_varbackendAzureRmKey)
+
+# Stage: Manual Validation > terraform install > terraform init > terraform plan
+- stage: MainBranchMerge_Approval
+  displayName: "Branch: (main) - Stage: Approval"
+  dependsOn: MainBranchMerge_TerraformInit
+  condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+  jobs:
+  - job: Main_Approval_Init_Plan
+    pool: server   # ✅ REQUIRED for ManualValidation
+    steps:
+    # Manual Validation
+    - task: ManualValidation@0
+      inputs:
+        notifyUsers: 'ankur@example.com'
+        instructions: 'Approve to proceed with Terraform Plan for main branch.'
+
+# Stage: Manual Validation > terraform install > terraform init > terraform plan
+- stage: MainBranchMerge_TerraformInitPlan
+  displayName: "Branch: (main) - Stage: Init, Plan"
+  dependsOn: MainBranchMerge_Approval
+  condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+  jobs:
+  - job: Main_Init_Plan
+    steps:
+    # TEMPLATE --> Terraform INSTALL & INIT & PLAN
+    - template: templates/terraform-plan.yml
+      parameters:
+        workingDirectory: ${{ variables.varWorkingDirectory }}
+        serviceConnection: ${{ variables.varServiceConnection }}
+        backendRg: ${{ variables.varbackendAzureRmResourceGroupName }}
+        backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
+        backendContainer: $(selectedVG_varbackendAzureRmContainerName)
+        backendKey: $(selectedVG_varbackendAzureRmKey)
+
+    # Install Infracost
+    - script: |
+        echo "Installing Infracost..."
+        curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
+
+        echo "Configuring API Key..."
+        infracost configure set api_key $(INFRACOST_API_KEY)
+
+        infracost --version
+      displayName: "Install & Configure Infracost"
+
+    # Run Infracost Breakdown
+    - script: |
+        echo "Running Infracost breakdown..."
+        cd ${{ variables.varWorkingDirectory }}
+
+        echo "Executing: infracost breakdown --path=. --format json --out-file infracost-report.json"
+        infracost breakdown \
+            --path . \
+            --format json \
+            --out-file infracost-report.json || true
+
+        echo "Verifying Infracost report..."
+        if [ -f infracost-report.json ]; then
+          echo "✅ Infracost report generated successfully"
+        else
+          echo "❌ Infracost did NOT generate a report!"
+          echo "{}" > infracost-report.json
+        fi
+
+        ls -l infracost-report.json
+      displayName: "Run Infracost Cost Breakdown"
+
+    # Check and Copy Infracost Report
+    - script: |
+        echo "Checking for Infracost report before publishing..."
+        if [ -f "${{ variables.varWorkingDirectory }}/infracost-report.json" ]; then
+          echo "✅ Infracost report found, ready for publish."
+        else
+          echo "⚠️ No Infracost report found at ${{ variables.varWorkingDirectory }}/infracost-report.json"
+          echo "{}" > ${{ variables.varWorkingDirectory }}/infracost-report.json
+        fi
+      displayName: "Verify Infracost Report File"
+
+    # Publish Infracost Report (same pattern as Trivy)
+    - publish: ${{ variables.varWorkingDirectory }}/infracost-report.json
+      artifact: InfracostReport_${{ parameters.environment }}
+      displayName: "Publish Infracost Report"
+
+# =====================================
+# Feature branch flow
+# =====================================
+
+# Stage: terraform install > terraform init
+- stage: FeatureBranchMerge_TerraformInit
+  displayName: "Branch: (feature) - Stage: Terraform Init"
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: Feature_Init
+    steps:
+    # TEMPLATE --> Terraform INSTALL & INIT
+    - template: templates/terraform-init.yml
+      parameters:
+        workingDirectory: ${{ variables.varWorkingDirectory }}
+        serviceConnection: ${{ variables.varServiceConnection }}
+        backendRg: ${{ variables.varbackendAzureRmResourceGroupName }}
+        backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
+        backendContainer: $(selectedVG_varbackendAzureRmContainerName)
+        backendKey: $(selectedVG_varbackendAzureRmKey)
+
+# Stage: terraform install > terraform init > terraform validate
+- stage: FeatureBranchMerge_TerraformInitValidate
+  displayName: "Branch: (feature) - Stage: Terraform Init, Validate"
+  dependsOn: FeatureBranchMerge_TerraformInit
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: Feature_Init_Validate
+    steps:
+
+    # TEMPLATE --> Terraform INSTALL & INIT & VALIDATE
+    - template: templates/terraform-validate.yml
+      parameters:
+        workingDirectory: ${{ variables.varWorkingDirectory }}
+        serviceConnection: ${{ variables.varServiceConnection }}
+        backendRg: ${{ variables.varbackendAzureRmResourceGroupName }}
+        backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
+        backendContainer: $(selectedVG_varbackendAzureRmContainerName)
+        backendKey: $(selectedVG_varbackendAzureRmKey)
+
+- stage: FeatureBranchMerge_TerraformLintAndSecurity
+  displayName: "Stage: TFLint and TFsec Scan"
+  dependsOn: FeatureBranchMerge_TerraformInitValidate
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: LintAndSecurity
+    displayName: "Run TFLint and TFsec"
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+
+    # Checkout code
+    - checkout: self
+
+    # Install TFLint
+    - script: |
+        echo "Installing TFLint..."
+        curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+        tflint --version
+      displayName: "Install TFLint"
+
+    # Run TFLint
+    - script: |
+        echo "Running TFLint..."
+        cd ${{ variables.varWorkingDirectory }}
+        tflint --init
+        tflint --recursive --enable-rule=terraform_required_providers --force
+      displayName: "Run TFLint Analysis"
+
+    # Generate JSON Report
+    - script: |
+        cd ${{ variables.varWorkingDirectory }}
+        echo "Generating TFLint JSON report..."
+        tflint --format json > $(System.DefaultWorkingDirectory)/tflint-report.json || true
+      displayName: "Generate TFLint Report"
+
+    # Publish Report Artifact
+    - publish: $(System.DefaultWorkingDirectory)/tflint-report.json
+      artifact: TFLintReport_${{ parameters.environment }}
+
+    # Fail pipeline if TFLint reports HIGH/CRITICAL issues
+    - script: |
+        echo "🔍 Checking TFLint report for HIGH/CRITICAL issues..."
+
+        REPORT="$(System.DefaultWorkingDirectory)/tflint-report.json"
+
+        if [ ! -f "$REPORT" ]; then
+          echo "❌ TFLint report not found! Failing pipeline."
+          exit 1
+        fi
+
+        echo "📄 TFLint report found. Parsing JSON..."
+
+        # Count high severity issues (TFLint uses 'ERROR' for serious findings)
+        HIGH_CRITICAL_COUNT=$(jq '[ .issues[] | select(.severity == "ERROR" or .severity == "HIGH" or .severity == "CRITICAL") ] | length' "$REPORT")
+
+        echo "🔥 Total HIGH/CRITICAL findings: $HIGH_CRITICAL_COUNT"
+
+        if [ "$HIGH_CRITICAL_COUNT" -gt 0 ]; then
+          echo "❌ Pipeline FAILED — TFLint detected HIGH/CRITICAL issues."
+          exit 1
+        else
+          echo "✅ No high/critical issues found. Continuing..."
+        fi
+      displayName: "❌ Fail Pipeline on High/Critical TFLint Issues"
+      condition: succeededOrFailed()
+
+    # Install Trivy (Official APT Method)
+    - script: |
+        echo "Installing Trivy..."
+        sudo apt-get update -y
+        sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update -y
+        sudo apt-get install -y trivy
+        trivy --version
+      displayName: "Install Trivy"
+
+    # Run Trivy Terraform Config Scan
+    - script: |
+        echo "Running Trivy Terraform config scan..."
+        cd ${{ variables.varWorkingDirectory }}
+
+        echo "Executing: trivy config . --format json --output trivy-report.json"
+        trivy config . \
+            --format json \
+            --severity HIGH,CRITICAL \
+            --output trivy-report.json || true
+
+        echo "Verifying Trivy report..."
+        if [ -f trivy-report.json ]; then
+            echo "✅ Trivy report generated successfully"
+        else
+            echo "❌ Trivy did NOT generate a report!"
+            echo "{}" > trivy-report.json
+        fi
+
+        ls -l trivy-report.json
+      displayName: "Run Trivy Config Scan (v0.67.2 Compatible)"
+
+
+    # Check and copy Trivy report to known location
+    - script: |
+        echo "Checking for Trivy report before publishing..."
+        if [ -f "${{ variables.varWorkingDirectory }}/trivy-report.json" ]; then
+          echo "✅ Trivy report found, ready for publish."
+        else
+          echo "⚠️ No Trivy report found at ${{ variables.varWorkingDirectory }}/trivy-report.json"
+          echo "{}" > ${{ variables.varWorkingDirectory }}/trivy-report.json
+        fi
+      displayName: "Verify Trivy Report File"
+
+    # Publish Trivy Report
+    - publish: ${{ variables.varWorkingDirectory }}/trivy-report.json
+      artifact: TrivyReport_${{ parameters.environment }}
+      displayName: "Publish Trivy Report"
+
+    # Fail pipeline if Trivy finds more than 1 HIGH or CRITICAL issue
+    - script: |
+        echo "🔍 Checking Trivy report for misconfigurations..."
+
+        REPORT="${{ variables.varWorkingDirectory }}/trivy-report.json"
+
+        if [ ! -f "$REPORT" ]; then
+          echo "❌ Trivy report not found! Failing pipeline."
+          exit 1
+        fi
+
+        echo "📄 Parsing Trivy JSON..."
+
+        FAILURES=$(jq -r '.Results[].MisconfSummary.Failures' "$REPORT")
+
+        echo "🟥 Total Failures: $FAILURES"
+
+        # Fail pipeline if FAILURES > 1
+        if [ "$FAILURES" -gt 1 ]; then
+          echo "❌ Pipeline FAILED — More than 1 Trivy failure detected."
+          exit 1
+        fi
+
+        echo "✅ Trivy scan passed within allowed thresholds."
+      displayName: "❌ Fail Pipeline if Trivy Failures > 1"
+      condition: succeededOrFailed()
+
+- stage: FeatureBranchMerge_Approval
+  displayName: "Branch: (feature) - Stage: Approval before Fmt (feature)"
+  dependsOn: FeatureBranchMerge_TerraformLintAndSecurity
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: Feature_Approval
+    pool: server   # ✅ REQUIRED for ManualValidation
+    steps:
+    - task: ManualValidation@0
+      inputs:
+        notifyUsers: 'ankur@example.com'
+        instructions: 'Approve to run Terraform Fmt on feature branch.'
+
+# Stage: terraform install > terraform init > terraform fmt
+- stage: FeatureBranchMerge_TerraformFmt
+  displayName: "Branch: (feature) - Stage: Terraform Init, Fmt"
+  dependsOn: FeatureBranchMerge_Approval
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: Feature_Init_Fmt
+    steps:
+    # TEMPLATE --> Terraform INSTALL & INIT & FMT
+    - template: templates/terraform-fmt.yml
+      parameters:
+        workingDirectory: ${{ variables.varWorkingDirectory }}
+        serviceConnection: ${{ variables.varServiceConnection }}
+        backendRg: ${{ variables.varbackendAzureRmResourceGroupName }}
+        backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
+        backendContainer: $(selectedVG_varbackendAzureRmContainerName)
+        backendKey: $(selectedVG_varbackendAzureRmKey)
+
+# Stage: Manual Validation > terraform install > terraform init > terraform plan
+- stage: FeatureBranchMerge_TerraformInitPlan_InfraCost
+  displayName: "Branch: (feature) - Stage: Init, Plan - Infra Cost"
+  dependsOn: MainBranchMerge_Approval
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: Main_Init_Plan
+    steps:
+    # TEMPLATE --> Terraform INSTALL & INIT & PLAN
+    - template: templates/terraform-plan.yml
+      parameters:
+        workingDirectory: ${{ variables.varWorkingDirectory }}
+        serviceConnection: ${{ variables.varServiceConnection }}
+        backendRg: ${{ variables.varbackendAzureRmResourceGroupName }}
+        backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
+        backendContainer: $(selectedVG_varbackendAzureRmContainerName)
+        backendKey: $(selectedVG_varbackendAzureRmKey)
+
+    # Install Infracost
+    - script: |
+        echo "Installing Infracost..."
+        curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
+
+        echo "Configuring API Key..."
+        infracost configure set api_key $(INFRACOST_API_KEY)
+
+        infracost --version
+      displayName: "Install & Configure Infracost"
+
+    # Run Infracost Breakdown
+    - script: |
+        echo "Running Infracost breakdown..."
+        cd ${{ variables.varWorkingDirectory }}
+
+        echo "Executing: infracost breakdown --path=. --format json --out-file infracost-report.json"
+        infracost breakdown \
+            --path . \
+            --format json \
+            --out-file infracost-report.json || true
+
+        echo "Verifying Infracost report..."
+        if [ -f infracost-report.json ]; then
+          echo "✅ Infracost report generated successfully"
+        else
+          echo "❌ Infracost did NOT generate a report!"
+          echo "{}" > infracost-report.json
+        fi
+
+        ls -l infracost-report.json
+      displayName: "Run Infracost Cost Breakdown"
+
+    # Check and Copy Infracost Report
+    - script: |
+        echo "Checking for Infracost report before publishing..."
+        if [ -f "${{ variables.varWorkingDirectory }}/infracost-report.json" ]; then
+          echo "✅ Infracost report found, ready for publish."
+        else
+          echo "⚠️ No Infracost report found at ${{ variables.varWorkingDirectory }}/infracost-report.json"
+          echo "{}" > ${{ variables.varWorkingDirectory }}/infracost-report.json
+        fi
+      displayName: "Verify Infracost Report File"
+
+    # Publish Infracost Report (same pattern as Trivy)
+    - publish: ${{ variables.varWorkingDirectory }}/infracost-report.json
+      artifact: InfracostReport_${{ parameters.environment }}
+      displayName: "Publish Infracost Report"
+
+- stage: FeatureBranchRun_Approval
+  displayName: "Branch: (feature) - Stage: Approval before Fmt (feature)"
+  dependsOn: FeatureBranchMerge_TerraformLintAndSecurity
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: Feature_Approval
+    pool: server   # ✅ REQUIRED for ManualValidation
+    steps:
+    - task: ManualValidation@0
+      inputs:
+        notifyUsers: 'ankur@example.com'
+        instructions: 'Approve to run Terraform Fmt on feature branch.'
+
+# Stage: terraform install > terraform init > terraform apply
+- stage: FeatureBranchMerge_TerraformInitApply
+  displayName: "Branch: (feature) - Stage: Terraform Init, Apply"
+  dependsOn: FeatureBranchMerge_TerraformInit
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: Feature_Init_Apply
+    steps:
+
+    # TEMPLATE --> Terraform INSTALL & INIT & APPLY
+    - template: templates/terraform-apply.yml
+      parameters:
+        workingDirectory: ${{ variables.varWorkingDirectory }}
+        serviceConnection: ${{ variables.varServiceConnection }}
+        backendRg: ${{ variables.varbackendAzureRmResourceGroupName }}
+        backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
+        backendContainer: $(selectedVG_varbackendAzureRmContainerName)
+        backendKey: $(selectedVG_varbackendAzureRmKey)

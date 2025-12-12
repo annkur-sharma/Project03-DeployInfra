@@ -1,0 +1,42 @@
+parameters:
+  - name: workingDirectory
+    type: string
+  - name: serviceConnection
+    type: string
+  - name: backendRg
+    type: string
+  - name: backendStorage
+    type: string
+  - name: backendContainer
+    type: string
+  - name: backendKey
+    type: string
+
+steps:
+  # Terraform INSTALL
+  - task: TerraformInstaller@1
+    displayName: "Install Terraform"
+    inputs:
+      terraformVersion: "latest"
+
+  # Terraform INIT
+  - task: TerraformTaskV4@4
+    displayName: "Terraform Init"
+    inputs:
+      provider: "azurerm"
+      command: "init"
+      workingDirectory: ${{ parameters.workingDirectory }}
+      backendServiceArm: ${{ parameters.serviceConnection }}
+      backendAzureRmResourceGroupName: ${{ parameters.backendRg }}
+      backendAzureRmStorageAccountName: ${{ parameters.backendStorage }}
+      backendAzureRmContainerName: ${{ parameters.backendContainer }}
+      backendAzureRmKey: ${{ parameters.backendKey }}
+
+  # Terraform PLAN
+  - task: TerraformTaskV4@4
+    displayName: 'Task: terraform plan'
+    inputs:
+      provider: 'azurerm'
+      command: 'plan'
+      workingDirectory: ${{ parameters.workingDirectory }}
+      environmentServiceNameAzureRM: ${{ parameters.serviceConnection }}
