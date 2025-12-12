@@ -3,10 +3,11 @@ var_root_dev_resource_group = {
     resource_group_name = "eagle-rg1"
     location            = "francecentral"
     tags = {
-      env      = "dev"
-      resource = "resource_group"
-      app      = "terraform"
-      env_type = "common"
+      Environment  = "dev"
+      owner        = "annkur"
+      cost_center  = "1234"
+      project      = "my-app"
+      business_unit = "devops"
     }
   }
 }
@@ -22,10 +23,11 @@ var_root_dev_vnet = {
     dns_servers         = ["10.0.0.4", "10.0.0.5"]
 
     tags = {
-      env      = "dev"
-      resource = "vnet"
-      app      = "terraform"
-      env_type = "common"
+      Environment  = "dev"
+      owner        = "annkur"
+      cost_center  = "1234"
+      project      = "my-app"
+      business_unit = "devops"
     }
   }
 }
