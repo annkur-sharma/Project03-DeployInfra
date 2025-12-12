@@ -112,53 +112,66 @@ stages:
         echo "Running Infracost breakdown..."
         cd ${{ variables.varWorkingDirectory }}
 
-        timestamp=$(date +"%Y-%m-%d-%H-%M-%S")
-        build_number=$(Build.BuildNumber)
-        INFRACOST_JSON_FILE="infracost-report-${build_number}-${timestamp}.json"
-
-        echo "Executing: infracost breakdown --path=. --format json --out-file $INFRACOST_JSON_FILE"
+        echo "Executing: infracost breakdown --path=. --format json --out-file infracost-report.json"
         infracost breakdown \
             --path . \
             --format json \
-            --out-file "$INFRACOST_JSON_FILE" || true
+            --out-file infracost-report.json || true
 
         echo "Verifying Infracost report..."
-        if [ -f "$INFRACOST_JSON_FILE" ]; then
+        if [ -f infracost-report.json ]; then
           echo "✅ Infracost report generated successfully"
-          infracost upload --path "$INFRACOST_JSON_FILE"
+          infracost upload --path infracost-report.json
           echo "✅ Infracost report uploaded successfully"
         else
           echo "❌ Infracost did NOT generate a report!"
-          echo "{}" > "$INFRACOST_JSON_FILE"
+          echo "{}" > infracost-report.json
         fi
 
-        ls -l "$INFRACOST_JSON_FILE"
+        ls -l infracost-report.json
       displayName: "Run Infracost Cost Breakdown"
 
     # Check and Copy Infracost Report
     - script: |
         echo "Checking for Infracost report before publishing..."
-        if [ -f "${{ variables.varWorkingDirectory }}/$INFRACOST_JSON_FILE" ]; then
+        if [ -f "${{ variables.varWorkingDirectory }}/infracost-report.json" ]; then
           echo "✅ Infracost report found, ready for publish."
         else
-          echo "⚠️ No Infracost report found at ${{ variables.varWorkingDirectory }}/$INFRACOST_JSON_FILE"
-          echo "{}" > ${{ variables.varWorkingDirectory }}/$INFRACOST_JSON_FILE
+          echo "⚠️ No Infracost report found at ${{ variables.varWorkingDirectory }}/infracost-report.json"
+          echo "{}" > ${{ variables.varWorkingDirectory }}/infracost-report.json
         fi
       displayName: "Verify Infracost Report File"
 
     # Publish Infracost Report (same pattern as Trivy)
-    - publish: ${{ variables.varWorkingDirectory }}/INFRACOST_JSON_FILE
-      artifact: "$INFRACOST_JSON_FILE"
+    - publish: ${{ variables.varWorkingDirectory }}/infracost-report.json
+      artifact: InfracostReport_${{ parameters.environment }}
       displayName: "Publish Infracost Report"
 
 # =====================================
 # Feature branch flow
 # =====================================
 
+# Stage: terraform install > terraform init
+- stage: FeatureBranchMerge_TerraformInit
+  displayName: "Branch: (feature) - Stage: Terraform Init"
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: Feature_Init
+    steps:
+    # TEMPLATE --> Terraform INSTALL & INIT
+    - template: templates/terraform-init.yml
+      parameters:
+        workingDirectory: ${{ variables.varWorkingDirectory }}
+        serviceConnection: ${{ variables.varServiceConnection }}
+        backendRg: ${{ variables.varbackendAzureRmResourceGroupName }}
+        backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
+        backendContainer: $(selectedVG_varbackendAzureRmContainerName)
+        backendKey: $(selectedVG_varbackendAzureRmKey)
+
 # Stage: terraform install > terraform init > terraform validate
 - stage: FeatureBranchMerge_TerraformInitValidate
   displayName: "Branch: (feature) - Stage: Terraform Init, Validate"
-  # dependsOn: FeatureBranchMerge_TerraformInit
+  dependsOn: FeatureBranchMerge_TerraformInit
   condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
   jobs:
   - job: Feature_Init_Validate
@@ -319,7 +332,7 @@ stages:
       displayName: "❌ Fail Pipeline if Trivy Failures > 1"
       condition: succeededOrFailed()
 
-- stage: FeatureBranch_CostPlan_Approval
+- stage: FeatureBranchMerge_Approval
   displayName: "Branch: (feature) - Stage: Approval before Fmt (feature)"
   dependsOn: FeatureBranchMerge_TerraformLintAndSecurity
   condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
@@ -332,10 +345,28 @@ stages:
         notifyUsers: 'ankur@example.com'
         instructions: 'Approve to run Terraform Fmt on feature branch.'
 
+# Stage: terraform install > terraform init > terraform fmt
+- stage: FeatureBranchMerge_TerraformFmt
+  displayName: "Branch: (feature) - Stage: Terraform Init, Fmt"
+  dependsOn: FeatureBranchMerge_Approval
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: Feature_Init_Fmt
+    steps:
+    # TEMPLATE --> Terraform INSTALL & INIT & FMT
+    - template: templates/terraform-fmt.yml
+      parameters:
+        workingDirectory: ${{ variables.varWorkingDirectory }}
+        serviceConnection: ${{ variables.varServiceConnection }}
+        backendRg: ${{ variables.varbackendAzureRmResourceGroupName }}
+        backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
+        backendContainer: $(selectedVG_varbackendAzureRmContainerName)
+        backendKey: $(selectedVG_varbackendAzureRmKey)
+
 # Stage: Manual Validation > terraform install > terraform init > terraform plan
 - stage: FeatureBranchMerge_TerraformInitPlan_InfraCost
   displayName: "Branch: (feature) - Stage: Init, Plan - Infra Cost"
-  dependsOn: FeatureBranch_CostPlan_Approval
+  dependsOn: MainBranchMerge_Approval
   condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
   jobs:
   - job: Main_Init_Plan
@@ -366,48 +397,42 @@ stages:
         echo "Running Infracost breakdown..."
         cd ${{ variables.varWorkingDirectory }}
 
-        timestamp=$(date +"%Y-%m-%d-%H-%M-%S")
-        build_number=$(Build.BuildNumber)
-        INFRACOST_JSON_FILE="infracost-report-${build_number}-${timestamp}.json"
-
-        echo "Executing: infracost breakdown --path=. --format json --out-file $INFRACOST_JSON_FILE"
+        echo "Executing: infracost breakdown --path=. --format json --out-file infracost-report.json"
         infracost breakdown \
             --path . \
             --format json \
-            --out-file "$INFRACOST_JSON_FILE" || true
+            --out-file infracost-report.json || true
 
         echo "Verifying Infracost report..."
-        if [ -f "$INFRACOST_JSON_FILE" ]; then
+        if [ -f infracost-report.json ]; then
           echo "✅ Infracost report generated successfully"
-          infracost upload --path "$INFRACOST_JSON_FILE"
-          echo "✅ Infracost report uploaded successfully"
         else
           echo "❌ Infracost did NOT generate a report!"
-          echo "{}" > "$INFRACOST_JSON_FILE"
+          echo "{}" > infracost-report.json
         fi
 
-        ls -l "$INFRACOST_JSON_FILE"
+        ls -l infracost-report.json
       displayName: "Run Infracost Cost Breakdown"
 
     # Check and Copy Infracost Report
     - script: |
         echo "Checking for Infracost report before publishing..."
-        if [ -f "${{ variables.varWorkingDirectory }}/$INFRACOST_JSON_FILE" ]; then
+        if [ -f "${{ variables.varWorkingDirectory }}/infracost-report.json" ]; then
           echo "✅ Infracost report found, ready for publish."
         else
-          echo "⚠️ No Infracost report found at ${{ variables.varWorkingDirectory }}/$INFRACOST_JSON_FILE"
-          echo "{}" > ${{ variables.varWorkingDirectory }}/$INFRACOST_JSON_FILE
+          echo "⚠️ No Infracost report found at ${{ variables.varWorkingDirectory }}/infracost-report.json"
+          echo "{}" > ${{ variables.varWorkingDirectory }}/infracost-report.json
         fi
       displayName: "Verify Infracost Report File"
 
     # Publish Infracost Report (same pattern as Trivy)
-    - publish: ${{ variables.varWorkingDirectory }}/INFRACOST_JSON_FILE
-      artifact: "$INFRACOST_JSON_FILE"
+    - publish: ${{ variables.varWorkingDirectory }}/infracost-report.json
+      artifact: InfracostReport_${{ parameters.environment }}
       displayName: "Publish Infracost Report"
 
-- stage: FeatureBranch_Apply_Approval
+- stage: FeatureBranchRun_Approval
   displayName: "Branch: (feature) - Stage: Approval before Fmt (feature)"
-  dependsOn: FeatureBranchMerge_TerraformInitPlan_InfraCost
+  dependsOn: FeatureBranchMerge_TerraformLintAndSecurity
   condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
   jobs:
   - job: Feature_Approval
@@ -421,7 +446,7 @@ stages:
 # Stage: terraform install > terraform init > terraform apply
 - stage: FeatureBranchMerge_TerraformInitApply
   displayName: "Branch: (feature) - Stage: Terraform Init, Apply"
-  dependsOn: FeatureBranch_Apply_Approval
+  dependsOn: FeatureBranchMerge_TerraformInit
   condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
   jobs:
   - job: Feature_Init_Apply
