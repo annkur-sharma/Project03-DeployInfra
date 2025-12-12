@@ -12,10 +12,10 @@ variable "var_root_dev_subnet"  {
     type = map(any)
 }
 
-# Public IP resource
-variable "var_root_dev_public_ip"  {
-    type = map(any)
-}
+# # Public IP resource
+# variable "var_root_dev_public_ip"  {
+#     type = map(any)
+# }
 
 # "Map of Network Security Groups to create with optional security rules."
 variable "var_root_dev_nsg"  {
