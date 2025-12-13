@@ -36,3 +36,7 @@ module "module_vm" {
   source       = "../../modules/06-vm"
   var_child_vm = var.var_root_dev_vms
 }
+
+# output "hello_world" {
+#   value = "Hello, World!"
+# }

@@ -1,7 +1,7 @@
 var_root_dev_resource_group = {
   resource_group1 = {
     resource_group_name = "eagle-rg1"
-    location            = "francecentral"
+    location            = "australiaeast"
     tags = {
       Environment  = "dev"
       owner        = "annkur"
@@ -17,7 +17,7 @@ var_root_dev_vnet = {
   vnet1 = {
     # Required variables of VNet
     vnet_name           = "eagle-vnet1"
-    location            = "francecentral"
+    location            = "australiaeast"
     resource_group_name = "eagle-rg1"
     address_space       = ["10.0.0.0/16"]
     dns_servers         = ["10.0.0.4", "10.0.0.5"]
@@ -53,7 +53,7 @@ var_root_dev_subnet = {
 var_root_dev_nsg = {
   nsg1 = {
     name                = "eagle-nsg1-frontend"
-    location            = "francecentral"
+    location            = "australiaeast"
     resource_group_name = "eagle-rg1"
 
     tags = {
@@ -91,7 +91,7 @@ var_root_dev_nsg = {
 
   nsg2 = {
     name                = "eagle-nsg2-backend"
-    location            = "francecentral"
+    location            = "australiaeast"
     resource_group_name = "eagle-rg1"
 
     tags = {
@@ -131,7 +131,7 @@ var_root_dev_nsg = {
 var_root_dev_nic_private_ip = {
   nic_vm1 = {
     name                           = "eagle-nic1-frontend"
-    location                       = "francecentral"
+    location                       = "australiaeast"
     resource_group_name            = "eagle-rg1"
     accelerated_networking_enabled = false
     ip_forwarding_enabled          = false
@@ -160,7 +160,7 @@ var_root_dev_nic_private_ip = {
 
   nic_vm2 = {
     name                = "eagle-nic2-backend"
-    location            = "francecentral"
+    location            = "australiaeast"
     resource_group_name = "eagle-rg1"
     accelerated_networking_enabled = false
     ip_forwarding_enabled          = false
@@ -191,11 +191,11 @@ var_root_dev_nic_private_ip = {
 var_root_dev_vms = {
   vm1 = {
     name                = "eagle-vm1-frontend"
-    location            = "francecentral"
+    location            = "australiaeast"
     resource_group_name = "eagle-rg1"
-    size                = "Standard_B1ms"
+    size                = "Standard_B2ts_v2"
 
-    key_Vault_name                = "ankurKeyVault5"
+    key_Vault_name                = "ankurKeyVault3"
     key_Vault_resource_group_name = "ankurbackend01"
 
     admin_username_key              = "vmuser"
@@ -225,11 +225,11 @@ var_root_dev_vms = {
 
   vm2 = {
     name                = "eagle-vm2-backend"
-    location            = "francecentral"
+    location            = "australiaeast"
     resource_group_name = "eagle-rg1"
-    size                = "Standard_B1s"
+    size                = "Standard_B2ts_v2"
 
-    key_Vault_name                = "ankurKeyVault5"
+    key_Vault_name                = "ankurKeyVault3"
     key_Vault_resource_group_name = "ankurbackend01"
 
     admin_username_key              = "vmuser"
