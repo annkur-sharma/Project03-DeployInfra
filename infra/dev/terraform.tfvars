@@ -185,6 +185,63 @@ var_root_dev_nic_private_ip = {
       }
     ]
   }
+
+    nic_vm4 = {
+    name                           = "eagle-nic4-frontend"
+    location                       = "australiaeast"
+    resource_group_name            = "eagle-rg1"
+    accelerated_networking_enabled = false
+    ip_forwarding_enabled          = false
+
+    tags = {
+      env      = "dev"
+      resource = "nic"
+      app      = "terraform"
+      env_type = "frontend"
+    }
+
+    subnet_key           = "subnet1"
+    subnet_name          = "eagle-subnet1-frontend"
+    virtual_network_name = "eagle-vnet1"
+    nsg_key              = "eagle-nsg1-frontend"
+
+
+    ip_configurations = [
+      {
+        name                          = "eagle-ipconfig4-frontend"
+        private_ip_address_allocation = "Dynamic"
+        primary                       = true
+      }
+    ]
+  }
+
+  nic_vm2 = {
+    name                = "eagle-nic3-backend"
+    location            = "australiaeast"
+    resource_group_name = "eagle-rg1"
+    accelerated_networking_enabled = false
+    ip_forwarding_enabled          = false
+    
+    tags = {
+      env      = "dev"
+      resource = "nic"
+      app      = "terraform"
+      env_type = "backend"
+    }
+    subnet_key           = "subnet2"
+    subnet_name          = "eagle-subnet3-backend"
+    virtual_network_name = "eagle-vnet1"
+    nsg_key              = "eagle-nsg2-backend"
+
+
+    ip_configurations = [
+      {
+        name                          = "eagle-ipconfig3-backend"
+        private_ip_address_allocation = "Dynamic"
+        primary                       = true
+      }
+    ]
+  }
 }
 
 
@@ -204,6 +261,74 @@ var_root_dev_vms = {
 
     # network_interface_id         = "/subscriptions/xxxx/resourceGroups/eagle-rg1/providers/Microsoft.Network/networkInterfaces/eagle-nic-frontend"
     nic_name             = "eagle-nic1-frontend"
+    storage_account_type = "Standard_LRS"
+
+    image = {
+      publisher = "Canonical"
+      offer     = "0001-com-ubuntu-server-jammy"
+      sku       = "22_04-lts-gen2"
+      version   = "latest"
+    }
+
+    computer_name          = "frontendvm"
+    child_custom_data_file = "../scripts/init_blue.sh"
+    tags = {
+      env      = "dev"
+      resource = "vm"
+      app      = "terraform"
+      env_type = "frontend"
+    }
+  }
+
+  vm3 = {
+    name                = "eagle-vm3-backend"
+    location            = "australiaeast"
+    resource_group_name = "eagle-rg1"
+    size                = "Standard_B2ts_v2"
+
+    key_Vault_name                = "ankurKeyVault3"
+    key_Vault_resource_group_name = "ankurbackend01"
+
+    admin_username_key              = "vmuser"
+    admin_password_key              = "vmpassword"
+    disable_password_authentication = false
+
+    # network_interface_id = "/subscriptions/xxxx/resourceGroups/eagle-rg1/providers/Microsoft.Network/networkInterfaces/eagle-nic-backend"
+    nic_name             = "eagle-nic3-backend"
+    storage_account_type = "Standard_LRS"
+
+    image = {
+      publisher = "Canonical"
+      offer     = "0001-com-ubuntu-server-jammy"
+      sku       = "22_04-lts-gen2"
+      version   = "latest"
+    }
+
+    computer_name          = "backendvm"
+    child_custom_data_file = "../scripts/init_green.sh"
+    tags = {
+      env      = "dev"
+      resource = "vm"
+      app      = "terraform"
+      env_type = "backend"
+    }
+  }
+
+    vm4 = {
+    name                = "eagle-vm4-frontend"
+    location            = "australiaeast"
+    resource_group_name = "eagle-rg1"
+    size                = "Standard_B2ts_v2"
+
+    key_Vault_name                = "ankurKeyVault3"
+    key_Vault_resource_group_name = "ankurbackend01"
+
+    admin_username_key              = "vmuser"
+    admin_password_key              = "vmpassword"
+    disable_password_authentication = false
+
+    # network_interface_id         = "/subscriptions/xxxx/resourceGroups/eagle-rg1/providers/Microsoft.Network/networkInterfaces/eagle-nic-frontend"
+    nic_name             = "eagle-nic4-frontend"
     storage_account_type = "Standard_LRS"
 
     image = {
