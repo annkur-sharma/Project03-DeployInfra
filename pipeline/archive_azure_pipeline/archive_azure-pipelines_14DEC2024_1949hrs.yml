@@ -86,24 +86,6 @@ stages:
   jobs:
   - job: Main_Init_Plan
     steps:
-    # 🔐 Fetch secrets FIRST
-    - task: AzureKeyVault@2
-      displayName: "Fetch secrets from Azure Key Vault"
-      inputs:
-        azureSubscription: ${{ variables.varServiceConnection }}
-        KeyVaultName: ankurKeyVault3
-        SecretsFilter: INFRACOSTAPIKEYVAULT
-        RunAsPreJob: true
-    # 🧪 Validate secret
-    - script: |
-        if [ -z "$(INFRACOSTAPIKEYVAULT)" ]; then
-          echo "❌ INFRACOST_API_KEY not loaded"
-          exit 1
-        else
-          echo "✅ INFRACOST_API_KEY loaded"
-        fi
-      displayName: "Validate Infracost Secret"
-
     # TEMPLATE --> Terraform INSTALL & INIT & PLAN
     - template: templates/terraform-plan.yml
       parameters:
@@ -120,7 +102,7 @@ stages:
         curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
 
         echo "Configuring API Key..."
-        infracost configure set api_key $(INFRACOSTAPIKEYVAULT)
+        infracost configure set api_key $(INFRACOST_API_KEY)
 
         infracost --version
       displayName: "Install & Configure Infracost"
@@ -358,25 +340,6 @@ stages:
   jobs:
   - job: Main_Init_Plan
     steps:
-
-    # 🔐 Fetch secrets FIRST
-    - task: AzureKeyVault@2
-      displayName: "Fetch secrets from Azure Key Vault"
-      inputs:
-        azureSubscription: ${{ variables.varServiceConnection }}
-        KeyVaultName: ankurKeyVault3
-        SecretsFilter: INFRACOSTAPIKEYVAULT
-        RunAsPreJob: true
-    # 🧪 Validate secret
-    - script: |
-        if [ -z "$(INFRACOSTAPIKEYVAULT)" ]; then
-          echo "❌ INFRACOST_API_KEY not loaded"
-          exit 1
-        else
-          echo "✅ INFRACOST_API_KEY loaded"
-        fi
-      displayName: "Validate Infracost Secret"
-
     # TEMPLATE --> Terraform INSTALL & INIT & PLAN
     - template: templates/terraform-plan.yml
       parameters:
@@ -393,7 +356,7 @@ stages:
         curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
 
         echo "Configuring API Key..."
-        infracost configure set api_key $(INFRACOSTAPIKEYVAULT)
+        infracost configure set api_key $(INFRACOST_API_KEY)
 
         infracost --version
       displayName: "Install & Configure Infracost"
