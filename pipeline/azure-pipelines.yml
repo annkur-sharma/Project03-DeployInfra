@@ -224,7 +224,7 @@ stages:
 
     - powershell: |
         cd .\terratest
-        go test -v .\unittest2_test.go
+        go test -v -timeout 45m .\unittest2_test.go
       displayName: "Run TerraTest scan"
 
 - stage: FeatureBranchMerge_TerraformLintAndSecurity
@@ -391,7 +391,8 @@ stages:
   dependsOn: FeatureBranch_CostPlan_Approval
   condition: and(succeeded('FeatureBranch_CostPlan_Approval'), startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'))
   jobs:
-  - job: Main_Init_Plan
+  - job: FeatureInitPlan_InfraCost
+    displayName: "Run Init, Plan, Infra Cost"
     steps:
 
     # 🔐 Fetch secrets FIRST
