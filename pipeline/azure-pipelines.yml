@@ -200,7 +200,7 @@ stages:
   - job: SonarQubeScan
     displayName: "Run SonarQube Scan"
     pool:
-      name: 'AgentPool-09DEC2025'
+      name: 'Default'
     steps:
     # 1️⃣ Prepare SonarQube (uses sonar-project.properties automatically)
     - checkout: self
