@@ -223,7 +223,7 @@ stages:
     - checkout: self
 
     - powershell: |
-        cd .\terretest
+        cd .\terratest
         go test -v .\unittest2_test.go
       displayName: "Run TerraTest scan"
 
