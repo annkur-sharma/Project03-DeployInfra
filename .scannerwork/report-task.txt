@@ -1,0 +1,6 @@
+projectKey=Project03-DeployInfra
+serverUrl=http://localhost:9000
+serverVersion=25.6.0.109173
+dashboardUrl=http://localhost:9000/dashboard?id=Project03-DeployInfra
+ceTaskId=80bad3c4-5a91-48af-af06-8381fb10e843
+ceTaskUrl=http://localhost:9000/api/ce/task?id=80bad3c4-5a91-48af-af06-8381fb10e843

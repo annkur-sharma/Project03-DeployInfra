@@ -197,27 +197,18 @@ stages:
   dependsOn: FeatureBranchMerge_TerraformInitValidate
   condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
   jobs:
-  - job: LintAndSecurity
-    displayName: "Run TFLint and Trivy"
+  - job: SonarQubeScan
+    displayName: "Run SonarQube Scan"
     pool:
       name: 'AgentPool-09DEC2025'
     steps:
     # 1️⃣ Prepare SonarQube (uses sonar-project.properties automatically)
-    - task: SonarQubePrepare@5
-      displayName: 'Prepare SonarQube Analysis'
-      inputs:
-        SonarQube: ${{ variables.varServiceConnection }}
-        scannerMode: 'CLI'
-        configMode: 'file'   # IMPORTANT 
-    # 2️⃣3️⃣ Run SonarQube scan
-    - task: SonarQubeAnalyze@5
-      displayName: 'Run SonarQube Analysis'
+    - checkout: self
 
-    # 3️⃣4️⃣ Publish Quality Gate (fail pipeline if gate fails)
-    - task: SonarQubePublish@5
-      displayName: 'Publish Quality Gate Result'
-      inputs:
-        pollingTimeoutSec: '300'
+    - powershell: |
+        sonar-scanner -D sonar.login=$(SONAR_TOKEN)
+      displayName: "Run sonar-scanner"
+
 
 - stage: FeatureBranchMerge_TerraformLintAndSecurity
   displayName: "Stage: TFLint and Trivy Scan"
