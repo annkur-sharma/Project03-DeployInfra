@@ -82,7 +82,7 @@ stages:
 - stage: MainBranchMerge_TerraformInitPlan
   displayName: "Branch: (main) - Stage: Init, Plan"
   dependsOn: MainBranchMerge_Approval
-  condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+  condition: and(succeeded('MainBranchMerge_Approval'), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   jobs:
   - job: Main_Init_Plan
     steps:
@@ -209,10 +209,27 @@ stages:
         sonar-scanner -D sonar.login=$(SONAR_TOKEN)
       displayName: "Run sonar-scanner"
 
+- stage: FeatureBranch_TerraTest
+  displayName: "Branch: (feature) - Stage: TerraTest"
+  dependsOn: FeatureBranch_SonarQube
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: SonarQubeScan
+    displayName: "Run TerraTest Scan"
+    pool:
+      name: 'Default'
+    steps:
+    # 1️⃣ Prepare TerraTest
+    - checkout: self
+
+    - powershell: |
+        cd .\terretest
+        go test -v .\unittest2_test.go
+      displayName: "Run TerraTest scan"
 
 - stage: FeatureBranchMerge_TerraformLintAndSecurity
   displayName: "Stage: TFLint and Trivy Scan"
-  dependsOn: FeatureBranchMerge_TerraformInitValidate
+  dependsOn: FeatureBranch_TerraTest
   condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
   jobs:
   - job: LintAndSecurity
@@ -372,7 +389,7 @@ stages:
 - stage: FeatureBranchMerge_TerraformInitPlan_InfraCost
   displayName: "Branch: (feature) - Stage: Init, Plan - Infra Cost"
   dependsOn: FeatureBranch_CostPlan_Approval
-  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  condition: and(succeeded('FeatureBranch_CostPlan_Approval'), startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'))
   jobs:
   - job: Main_Init_Plan
     steps:
@@ -482,7 +499,7 @@ stages:
 - stage: FeatureBranchMerge_TerraformInitApply
   displayName: "Branch: (feature) - Stage: Terraform Init, Apply"
   dependsOn: FeatureBranch_Apply_Approval
-  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  condition: and(succeeded('FeatureBranch_Apply_Approval'), startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'))
   jobs:
   - job: Feature_Init_Apply
     steps:
