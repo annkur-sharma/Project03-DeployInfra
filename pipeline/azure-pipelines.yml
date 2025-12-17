@@ -192,6 +192,33 @@ stages:
         backendContainer: $(selectedVG_varbackendAzureRmContainerName)
         backendKey: $(selectedVG_varbackendAzureRmKey)
 
+- stage: FeatureBranch_SonarQube
+  displayName: "Branch: (feature) - Stage: SonarQube Scan"
+  dependsOn: FeatureBranchMerge_TerraformInitValidate
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  jobs:
+  - job: LintAndSecurity
+    displayName: "Run TFLint and Trivy"
+    pool:
+      name: 'AgentPool-09DEC2025'
+    steps:
+    # 1️⃣ Prepare SonarQube (uses sonar-project.properties automatically)
+    - task: SonarQubePrepare@5
+      displayName: 'Prepare SonarQube Analysis'
+      inputs:
+        SonarQube: ${{ variables.varServiceConnection }}
+        scannerMode: 'CLI'
+        configMode: 'file'   # IMPORTANT 
+    # 2️⃣3️⃣ Run SonarQube scan
+    - task: SonarQubeAnalyze@5
+      displayName: 'Run SonarQube Analysis'
+
+    # 3️⃣4️⃣ Publish Quality Gate (fail pipeline if gate fails)
+    - task: SonarQubePublish@5
+      displayName: 'Publish Quality Gate Result'
+      inputs:
+        pollingTimeoutSec: '300'
+
 - stage: FeatureBranchMerge_TerraformLintAndSecurity
   displayName: "Stage: TFLint and Trivy Scan"
   dependsOn: FeatureBranchMerge_TerraformInitValidate
