@@ -428,7 +428,7 @@ stages:
     - script: |
         echo "📊 Running Trivy summary & policy enforcement..."
         python $(Build.SourcesDirectory)/org-devops-scripts/trivy/trivy_summary.py \
-          $(System.DefaultWorkingDirectory)/trivy-report.json
+          $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json
       displayName: "Trivy Summary & Policy Enforcement"
 
 - stage: FeatureBranch_CostPlan_Approval
