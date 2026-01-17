@@ -340,7 +340,6 @@ stages:
     # - script: |
     #     cd ${{ variables.varWorkingDirectory }}
     #     echo "Generating TFLint JSON report..."
-
     #     tflint --format json > tflint-report.json
     #     mv tflint-report.json $(System.DefaultWorkingDirectory)/tflint-report.json
     #   displayName: "Generate TFLint Report"
