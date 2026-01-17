@@ -397,27 +397,30 @@ stages:
         echo "Verifying Trivy report..."
         if [ -f trivy-report.json ]; then
             echo "✅ Trivy report generated successfully"
+            pwd
         else
             echo "❌ Trivy did NOT generate a report!"
+            pwd
             echo "{}" > trivy-report.json
         fi
 
+        pwd
         ls -l trivy-report.json
       displayName: "Run Trivy Config Scan (v0.67.2 Compatible)"
 
     # Check and copy Trivy report to known location
     - script: |
         echo "Checking for Trivy report before publishing..."
-        if [ -f "${{ variables.varWorkingDirectory }}/trivy-report.json" ]; then
+        if [ -f "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json" ]; then
           echo "✅ Trivy report found, ready for publish."
         else
-          echo "⚠️ No Trivy report found at ${{ variables.varWorkingDirectory }}/trivy-report.json"
-          echo "{}" > ${{ variables.varWorkingDirectory }}/trivy-report.json
+          echo "⚠️ No Trivy report found at $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json"
+          echo "{}" > $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json
         fi
       displayName: "Verify Trivy Report File"
 
     # Publish Trivy Report
-    - publish: ${{ variables.varWorkingDirectory }}/trivy-report.json
+    - publish: $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json
       artifact: TrivyReport_${{ parameters.environment }}
       displayName: "Publish Trivy Report"
 
