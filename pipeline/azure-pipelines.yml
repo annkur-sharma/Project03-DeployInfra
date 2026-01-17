@@ -311,7 +311,7 @@ stages:
     # Run TFLint
     - script: |
         echo "Running TFLint..."
-        cd ${{ variables.varWorkingDirectory }}
+        cd $(Build.SourcesDirectory)/Project03-DeployInfra
         tflint --init
         tflint --recursive --enable-rule=terraform_required_providers --force
       displayName: "Run TFLint Analysis"
@@ -324,7 +324,7 @@ stages:
         pwd
         ls -la
 
-        cd ${{ variables.varWorkingDirectory }} || {
+        cd $(Build.SourcesDirectory)/Project03-DeployInfra || {
           echo "❌ Working directory does not exist"
           exit 1
         }
