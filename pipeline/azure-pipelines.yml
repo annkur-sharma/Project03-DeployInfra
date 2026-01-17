@@ -345,6 +345,7 @@ stages:
     #     mv tflint-report.json $(System.DefaultWorkingDirectory)/tflint-report.json
     #   displayName: "Generate TFLint Report"
 
+    # Check python version
     - script: |
         python --version
         which python
