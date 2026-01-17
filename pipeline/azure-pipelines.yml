@@ -78,6 +78,9 @@ variables:
 - name: selected_service_connection
   value: ${{ variables.varServiceConnection }}
 
+- name: mainRepoRoot
+  value: '$(Build.SourcesDirectory)/infra'
+
 - ${{ if eq(parameters.environment, 'dev') }}:
   - group: Project03-VariableGroup-Dev
   - name: varWorkingDirectory
@@ -213,7 +216,7 @@ stages:
 
     # Publish Infracost Report (same pattern as Trivy)
     - publish: ${{ variables.varWorkingDirectory }}/INFRACOST_JSON_FILE
-      artifact: "$INFRACOST_JSON_FILE"
+      artifact: "$(INFRACOST_JSON_FILE)"
       displayName: "Publish Infracost Report"
 
 # =====================================
@@ -317,13 +320,19 @@ stages:
     - script: |
         cd ${{ variables.varWorkingDirectory }}
         echo "Generating TFLint JSON report..."
-        tflint --format json > $(System.DefaultWorkingDirectory)/tflint-report.json || true
+
+        tflint --format json > tflint-report.json
+        mv tflint-report.json $(System.DefaultWorkingDirectory)/tflint-report.json
       displayName: "Generate TFLint Report"
+
+    - script: |
+        python --version
+        which python
+      displayName: "Verify Python Runtime"
 
     # Fail pipeline if TFLint reports HIGH/CRITICAL issues
     - script: |
         echo "📊 Running TFLint summary & policy enforcement..."
-
         python $(Build.SourcesDirectory)/org-devops-scripts/tflint/tflint_summary.py \
           $(System.DefaultWorkingDirectory)/tflint-report.json
       displayName: "TFLint Summary & Policy Enforcement"
