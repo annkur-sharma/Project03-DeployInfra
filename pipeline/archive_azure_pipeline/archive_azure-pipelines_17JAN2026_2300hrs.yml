@@ -51,7 +51,7 @@ parameters:
   - name: run_tflint
     displayName: Run TFLint?
     type: string
-    default: no
+    default: yes
     values:
       - yes
       - no
@@ -336,6 +336,14 @@ stages:
         cat $(System.DefaultWorkingDirectory)/tflint-report.json
       displayName: "Generate TFLint Report"
 
+    # # Generate JSON Report
+    # - script: |
+    #     cd ${{ variables.varWorkingDirectory }}
+    #     echo "Generating TFLint JSON report..."
+    #     tflint --format json > tflint-report.json
+    #     mv tflint-report.json $(System.DefaultWorkingDirectory)/tflint-report.json
+    #   displayName: "Generate TFLint Report"
+
     # Check python version
     - script: |
         python --version
@@ -366,10 +374,6 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps:
-
-    # Checkout code
-    - checkout: self
-    - checkout: org-devops-scripts
 
     # Install Trivy (Official APT Method)
     - script: |
@@ -423,10 +427,30 @@ stages:
 
     # Fail pipeline if Trivy finds more than 1 HIGH or CRITICAL issue
     - script: |
-        echo "📊 Running Trivy summary & policy enforcement..."
-        python $(Build.SourcesDirectory)/org-devops-scripts/trivy/trivy_summary.py \
-          $(System.DefaultWorkingDirectory)/trivy-report.json
-      displayName: "Trivy Summary & Policy Enforcement"
+        echo "🔍 Checking Trivy report for misconfigurations..."
+
+        REPORT="${{ variables.varWorkingDirectory }}/trivy-report.json"
+
+        if [ ! -f "$REPORT" ]; then
+          echo "❌ Trivy report not found! Failing pipeline."
+          exit 1
+        fi
+
+        echo "📄 Parsing Trivy JSON..."
+
+        FAILURES=$(jq -r '.Results[].MisconfSummary.Failures' "$REPORT")
+
+        echo "🟥 Total Failures: $FAILURES"
+
+        # Fail pipeline if FAILURES > 1
+        if [ "$FAILURES" -gt 1 ]; then
+          echo "❌ Pipeline FAILED — More than 1 Trivy failure detected."
+          exit 1
+        fi
+
+        echo "✅ Trivy scan passed within allowed thresholds."
+      displayName: "❌ Fail Pipeline if Trivy Failures > 1"
+      condition: succeededOrFailed()
 
 - stage: FeatureBranch_CostPlan_Approval
   displayName: "Branch: (feature) - Stage: Approval before Fmt (feature)"
