@@ -386,7 +386,7 @@ stages:
     # Run Trivy Terraform Config Scan
     - script: |
         echo "Running Trivy Terraform config scan..."
-        cd ${{ variables.varWorkingDirectory }}
+        cd $(Build.SourcesDirectory)/Project03-DeployInfra
 
         echo "Executing: trivy config . --format json --output trivy-report.json"
         trivy config . \
