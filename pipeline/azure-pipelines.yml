@@ -59,7 +59,7 @@ parameters:
   - name: run_trivy
     displayName: Run Trivy?
     type: string
-    default: no
+    default: yes
     values:
       - yes
       - no
@@ -604,4 +604,3 @@ stages:
         backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
         backendContainer: $(selectedVG_varbackendAzureRmContainerName)
         backendKey: $(selectedVG_varbackendAzureRmKey)
-        
