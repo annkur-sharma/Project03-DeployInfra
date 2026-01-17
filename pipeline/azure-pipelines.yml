@@ -17,6 +17,46 @@ parameters:
       - dev
       - staging
 
+  - name: run_sonar_scan
+    displayName: Run Sonar Scan?
+    type: string
+    default: no
+    values:
+      - yes
+      - no
+    
+  - name: run_infracost
+    displayName: Run Infracost Scan?
+    type: string
+    default: no
+    values:
+      - yes
+      - no
+
+  - name: run_terratest
+    displayName: Run Terratest?
+    type: string
+    default: no
+    values:
+      - yes
+      - no
+
+  - name: run_tflint
+    displayName: Run TFLint?
+    type: string
+    default: yes
+    values:
+      - yes
+      - no
+
+  - name: run_trivy
+    displayName: Run Trivy?
+    type: string
+    default: no
+    values:
+      - yes
+      - no
+
 variables:
 - name: varServiceConnection
   value: SC-04JAN2026
@@ -195,7 +235,10 @@ stages:
 - stage: FeatureBranch_SonarQube
   displayName: "Branch: (feature) - Stage: SonarQube Scan"
   dependsOn: FeatureBranchMerge_TerraformInitValidate
-  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  condition: and(
+      startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'),
+      eq('${{ parameters.run_sonar_scan }}', 'yes')
+    )
   jobs:
   - job: SonarQubeScan
     displayName: "Run SonarQube Scan"
@@ -211,10 +254,13 @@ stages:
 
 - stage: FeatureBranch_TerraTest
   displayName: "Branch: (feature) - Stage: TerraTest"
-  dependsOn: FeatureBranch_SonarQube
-  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+  dependsOn: FeatureBranchMerge_TerraformInitValidate
+  condition: and(
+      startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'),
+      eq('${{ parameters.run_terratest }}', 'yes')
+    )
   jobs:
-  - job: SonarQubeScan
+  - job: TerratestJob
     displayName: "Run TerraTest Scan"
     pool:
       name: 'Default'
@@ -227,13 +273,16 @@ stages:
         go test -v -timeout 45m .\unittest2_test.go
       displayName: "Run TerraTest scan"
 
-- stage: FeatureBranchMerge_TerraformLintAndSecurity
-  displayName: "Stage: TFLint and Trivy Scan"
-  dependsOn: FeatureBranch_TerraTest
-  condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+- stage: FeatureBranchMerge_TFLintScan
+  displayName: "Stage: TFLint Scan"
+  dependsOn: FeatureBranchMerge_TerraformInitValidate
+  condition: and(
+      startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'),
+      eq('${{ parameters.run_tflint }}', 'yes')
+    )
   jobs:
-  - job: LintAndSecurity
-    displayName: "Run TFLint and Trivy"
+  - job: LintAndSecurity_TFLint
+    displayName: "Run TFLint"
     pool:
       vmImage: 'ubuntu-latest'
     steps:
@@ -294,6 +343,20 @@ stages:
       displayName: "❌ Fail Pipeline on High/Critical TFLint Issues"
       condition: succeededOrFailed()
 
+- stage: FeatureBranchMerge_TrivyScan
+  displayName: "Stage: Trivy Scan"
+  dependsOn: FeatureBranchMerge_TerraformInitValidate
+  condition: and(
+      startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'),
+      eq('${{ parameters.run_trivy }}', 'yes')
+    )
+  jobs:
+  - job: LintAndSecurity_Trivy
+    displayName: "Run Trivy scan"
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+
     # Install Trivy (Official APT Method)
     - script: |
         echo "Installing Trivy..."
@@ -327,7 +390,6 @@ stages:
 
         ls -l trivy-report.json
       displayName: "Run Trivy Config Scan (v0.67.2 Compatible)"
-
 
     # Check and copy Trivy report to known location
     - script: |
@@ -374,7 +436,7 @@ stages:
 
 - stage: FeatureBranch_CostPlan_Approval
   displayName: "Branch: (feature) - Stage: Approval before Fmt (feature)"
-  dependsOn: FeatureBranchMerge_TerraformLintAndSecurity
+  dependsOn: FeatureBranchMerge_TerraformInitValidate
   condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
   jobs:
   - job: Feature_Approval
@@ -389,7 +451,10 @@ stages:
 - stage: FeatureBranchMerge_TerraformInitPlan_InfraCost
   displayName: "Branch: (feature) - Stage: Init, Plan - Infra Cost"
   dependsOn: FeatureBranch_CostPlan_Approval
-  condition: and(succeeded('FeatureBranch_CostPlan_Approval'), startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/'))
+  condition: and(
+      succeeded('FeatureBranch_CostPlan_Approval'),
+      startsWith(variables['Build.SourceBranch'], 'refs/heads/feature/')
+    )
   jobs:
   - job: FeatureInitPlan_InfraCost
     displayName: "Run Init, Plan, Infra Cost"
@@ -398,11 +463,13 @@ stages:
     # 🔐 Fetch secrets FIRST
     - task: AzureKeyVault@2
       displayName: "Fetch secrets from Azure Key Vault"
+      condition: eq('${{ parameters.run_infracost }}', 'yes')
       inputs:
         azureSubscription: ${{ variables.varServiceConnection }}
         KeyVaultName: ankurKeyVault3
         SecretsFilter: INFRACOSTAPIKEYVAULT
         RunAsPreJob: true
+    
     # 🧪 Validate secret
     - script: |
         if [ -z "$(INFRACOSTAPIKEYVAULT)" ]; then
@@ -412,6 +479,7 @@ stages:
           echo "✅ INFRACOST_API_KEY loaded"
         fi
       displayName: "Validate Infracost Secret"
+      condition: eq('${{ parameters.run_infracost }}', 'yes')
 
     # TEMPLATE --> Terraform INSTALL & INIT & PLAN
     - template: templates/terraform-plan.yml
@@ -433,6 +501,7 @@ stages:
 
         infracost --version
       displayName: "Install & Configure Infracost"
+      condition: eq('${{ parameters.run_infracost }}', 'yes')
 
     # Run Infracost Breakdown
     - script: |
@@ -462,6 +531,7 @@ stages:
 
         ls -l "$INFRACOST_JSON_FILE"
       displayName: "Run Infracost Cost Breakdown"
+      condition: eq('${{ parameters.run_infracost }}', 'yes')
 
     # Check and Copy Infracost Report
     - script: |
@@ -477,11 +547,13 @@ stages:
           echo "{}" > ${{ variables.varWorkingDirectory }}/$(INFRACOST_JSON_FILE)
         fi
       displayName: "Verify Infracost Report File"
+      condition: eq('${{ parameters.run_infracost }}', 'yes')
 
     # Publish Infracost Report (same pattern as Trivy)
     - publish: ${{ variables.varWorkingDirectory }}/$(INFRACOST_JSON_FILE)
       artifact: $(INFRACOST_JSON_FILE)
       displayName: "Publish Infracost Report"
+      condition: eq('${{ parameters.run_infracost }}', 'yes')
 
 - stage: FeatureBranch_Apply_Approval
   displayName: "Branch: (feature) - Stage: Approval before Fmt (feature)"
