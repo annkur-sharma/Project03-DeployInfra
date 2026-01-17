@@ -318,12 +318,31 @@ stages:
 
     # Generate JSON Report
     - script: |
-        cd ${{ variables.varWorkingDirectory }}
         echo "Generating TFLint JSON report..."
 
-        tflint --format json > tflint-report.json
-        mv tflint-report.json $(System.DefaultWorkingDirectory)/tflint-report.json
+        echo "Current directory:"
+        pwd
+        ls -la
+
+        cd ${{ variables.varWorkingDirectory }} || {
+          echo "❌ Working directory does not exist"
+          exit 1
+        }
+
+        tflint --format json > $(System.DefaultWorkingDirectory)/tflint-report.json || true
+
+        echo "✅ TFLint report generated at:"
+        ls -l $(System.DefaultWorkingDirectory)/tflint-report.json
       displayName: "Generate TFLint Report"
+
+    # # Generate JSON Report
+    # - script: |
+    #     cd ${{ variables.varWorkingDirectory }}
+    #     echo "Generating TFLint JSON report..."
+
+    #     tflint --format json > tflint-report.json
+    #     mv tflint-report.json $(System.DefaultWorkingDirectory)/tflint-report.json
+    #   displayName: "Generate TFLint Report"
 
     - script: |
         python --version
