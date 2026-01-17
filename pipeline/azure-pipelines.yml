@@ -12,7 +12,7 @@ resources:
   repositories:
     - repository: org-devops-scripts
       type: git
-      name: DevOps/org-devops-scripts   # Azure DevOps project/repo
+      name: CloudProject1.0/org-devops-scripts   # Azure DevOps project/repo
       ref: refs/heads/main
 
 parameters:
