@@ -25,7 +25,7 @@ variables:
   value: ankurbackend01
 
 - name: varbackendAzureRmStorageAccountName
-  value: ankur01storage01ad01
+  value: ankur01storage01ae01
 
 # Selected values based on parameter: dev or staging
 - name: selected_service_connection
