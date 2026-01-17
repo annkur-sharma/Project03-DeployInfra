@@ -320,19 +320,20 @@ stages:
     - script: |
         echo "Generating TFLint JSON report..."
 
-        echo "Current directory:"
-        pwd
-        ls -la
-
         cd $(Build.SourcesDirectory)/Project03-DeployInfra || {
           echo "❌ Working directory does not exist"
           exit 1
         }
 
-        tflint --format json > $(System.DefaultWorkingDirectory)/tflint-report.json || true
+        tflint \
+          --recursive \
+          --enable-rule=terraform_required_providers \
+          --force \
+          --format json \
+          > $(System.DefaultWorkingDirectory)/tflint-report.json || true
 
-        echo "✅ TFLint report generated at:"
-        ls -l $(System.DefaultWorkingDirectory)/tflint-report.json
+        echo "✅ TFLint JSON report content:"
+        cat $(System.DefaultWorkingDirectory)/tflint-report.json
       displayName: "Generate TFLint Report"
 
     # # Generate JSON Report
