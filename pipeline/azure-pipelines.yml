@@ -336,6 +336,11 @@ stages:
         cat $(System.DefaultWorkingDirectory)/tflint-report.json
       displayName: "Generate TFLint Report"
 
+    # Publish Report Artifact
+    - publish: $(System.DefaultWorkingDirectory)/tflint-report.json
+      artifact: TFLintReport_${{ parameters.environment }}
+      displayName: "Publish TFlint Report"
+
     # Check python version
     - script: |
         python --version
@@ -349,9 +354,13 @@ stages:
           $(System.DefaultWorkingDirectory)/tflint-report.json
       displayName: "TFLint Summary & Policy Enforcement"
 
-    # Publish Report Artifact
-    - publish: $(System.DefaultWorkingDirectory)/tflint-report.json
-      artifact: TFLintReport_${{ parameters.environment }}
+    # Publish summary JSON as artifact
+    - task: PublishPipelineArtifact@1
+      displayName: "Publish TFLint Summary Report"
+      inputs:
+        targetPath: "$(System.DefaultWorkingDirectory)/tflint_summary_report.json"
+        artifact: TFLintReport_${{ parameters.environment }}
+        publishLocation: "pipeline"
 
 - stage: FeatureBranchMerge_TrivyScan
   displayName: "Stage: Trivy Scan"
@@ -430,6 +439,14 @@ stages:
         python $(Build.SourcesDirectory)/org-devops-scripts/trivy/trivy_summary.py \
           $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json
       displayName: "Trivy Summary & Policy Enforcement"
+
+    # Publish summary JSON as artifact
+    - task: PublishPipelineArtifact@1
+      displayName: "Publish Trivy Summary Report"
+      inputs:
+        targetPath: "$(System.DefaultWorkingDirectory)/trivy_summary_report.json"
+        artifact: TrivyReport_${{ parameters.environment }}
+        publishLocation: "pipeline"
 
 - stage: FeatureBranch_CostPlan_Approval
   displayName: "Branch: (feature) - Stage: Approval before Fmt (feature)"
