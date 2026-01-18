@@ -74,6 +74,8 @@ variables:
 - name: varbackendAzureRmStorageAccountName
   value: ankur01storage01ae01
 
+- group: VG_Slack_Notifications
+
 # Selected values based on parameter: dev or staging
 - name: selected_service_connection
   value: ${{ variables.varServiceConnection }}
