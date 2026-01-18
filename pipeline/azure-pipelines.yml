@@ -428,18 +428,27 @@ stages:
 
     # Check and copy Trivy report to known location
     - script: |
-        echo "Checking for Trivy report (infra-dev) before publishing..."
-        if [ -f "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json" ]; then
-          echo "✅ Trivy report (infra-dev) found, ready for publish."
-        elif [ -f "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json" ]; then
-          echo "✅ Trivy report (modules) found, ready for publish."
-        elif
-          echo "⚠️ No Trivy report (infra-dev) found at $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json"
-          echo "{}" > $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json
+        echo "Verifying Trivy reports..."
+
+        # Check infra report
+        if [ -f "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json" ] && [ -s "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json" ]; then
+            echo "✅ Trivy report (infra-dev) found and not empty"
         else
-          echo "⚠️ No Trivy report (modules) found at $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json"
-          echo "{}" > $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json
+            echo "⚠️ Trivy report (infra-dev) missing or empty, creating placeholder"
+            echo "{}" > "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json"
         fi
+
+        # Check modules report
+        if [ -f "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json" ] && [ -s "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json" ]; then
+            echo "✅ Trivy report (modules) found and not empty"
+        else
+            echo "⚠️ Trivy report (modules) missing or empty, creating placeholder"
+            echo "{}" > "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json"
+        fi
+
+        # Optional: list files
+        pwd
+        ls -l "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-*.json"
       displayName: "Verify Trivy Report File"
 
     - script: |
