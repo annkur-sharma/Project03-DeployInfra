@@ -355,6 +355,8 @@ stages:
         python $(Build.SourcesDirectory)/org-devops-scripts/tflint/tflint_summary.py \
           $(System.DefaultWorkingDirectory)/tflint-report.json
       displayName: "TFLint Summary & Policy Enforcement"
+      env:
+        SLACK_WEBHOOK_URL: $(SLACK_WEBHOOK_URL)
 
     # Publish summary JSON as artifact
     - task: PublishPipelineArtifact@1
@@ -474,6 +476,8 @@ stages:
         python $(Build.SourcesDirectory)/org-devops-scripts/trivy/trivy_summary.py \
           $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json
       displayName: "Trivy Summary & Policy Enforcement"
+      env:
+        SLACK_WEBHOOK_URL: $(SLACK_WEBHOOK_URL)
 
     # Publish summary JSON as artifact
     - task: PublishPipelineArtifact@1
@@ -489,6 +493,8 @@ stages:
         python $(Build.SourcesDirectory)/org-devops-scripts/trivy/trivy_summary.py \
           $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json
       displayName: "Trivy Summary & Policy Enforcement"
+      env:
+        SLACK_WEBHOOK_URL: $(SLACK_WEBHOOK_URL)
 
     # Publish summary JSON as artifact
     - task: PublishPipelineArtifact@1
