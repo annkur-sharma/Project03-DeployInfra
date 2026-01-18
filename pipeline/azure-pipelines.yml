@@ -415,10 +415,6 @@ stages:
         elif [ -f trivy-report-modules.json ]; then
             echo "✅ Trivy report (modules) generated successfully"
             pwd
-        elif
-            echo "❌ Trivy (infra-dev) did NOT generate a report!"
-            pwd
-            echo "{}" > trivy-report-infra-dev.json
         else
             echo "❌ Trivy (modules) did NOT generate a report!"
             pwd
