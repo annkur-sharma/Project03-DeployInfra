@@ -650,3 +650,4 @@ stages:
         backendStorage: ${{ variables.varbackendAzureRmStorageAccountName }}
         backendContainer: $(selectedVG_varbackendAzureRmContainerName)
         backendKey: $(selectedVG_varbackendAzureRmKey)
+
