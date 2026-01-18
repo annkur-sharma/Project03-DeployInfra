@@ -398,72 +398,46 @@ stages:
         cd $(Build.SourcesDirectory)/Project03-DeployInfra
 
         echo "Executing: trivy config . --format json --output trivy-report.json"
-        echo "🔍 Trivy scan: infra-dev"
-        trivy config .\infra\dev\ --tf-vars .\infra\dev\terraform.tfvars \
+        trivy config . \
             --format json \
-            --output trivy-report-infra-dev.json || true
-
-        echo "🔍 Trivy scan: modules"
-        trivy config .\modules \
-            --format json \
-            --output trivy-report-modules.json || true
+            --severity HIGH,CRITICAL \
+            --output trivy-report.json || true
 
         echo "Verifying Trivy report..."
-        if [ -f trivy-report-infra-dev.json ]; then
-            echo "✅ Trivy report (infra-dev) generated successfully"
+        if [ -f trivy-report.json ]; then
+            echo "✅ Trivy report generated successfully"
             pwd
-        elif [ -f trivy-report-modules.json ]; then
-            echo "✅ Trivy report (modules) generated successfully"
-            pwd
-        elif
-            echo "❌ Trivy (infra-dev) did NOT generate a report!"
-            pwd
-            echo "{}" > trivy-report-infra-dev.json
         else
-            echo "❌ Trivy (modules) did NOT generate a report!"
+            echo "❌ Trivy did NOT generate a report!"
             pwd
-            echo "{}" > trivy-report-modules.json
+            echo "{}" > trivy-report.json
         fi
 
         pwd
-        ls -l trivy-report-infra-dev.json
-        ls -l trivy-report-modules.json
+        ls -l trivy-report.json
       displayName: "Run Trivy Config Scan (v0.67.2 Compatible)"
 
     # Check and copy Trivy report to known location
     - script: |
-        echo "Checking for Trivy report (infra-dev) before publishing..."
-        if [ -f "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json" ]; then
-          echo "✅ Trivy report (infra-dev) found, ready for publish."
-        elif [ -f "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json" ]; then
-          echo "✅ Trivy report (modules) found, ready for publish."
-        elif
-          echo "⚠️ No Trivy report (infra-dev) found at $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json"
-          echo "{}" > $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json
+        echo "Checking for Trivy report before publishing..."
+        if [ -f "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json" ]; then
+          echo "✅ Trivy report found, ready for publish."
         else
-          echo "⚠️ No Trivy report (modules) found at $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json"
-          echo "{}" > $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json
+          echo "⚠️ No Trivy report found at $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json"
+          echo "{}" > $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json
         fi
       displayName: "Verify Trivy Report File"
 
-    - script: |
-        mkdir -p $(Build.ArtifactStagingDirectory)/trivy
-        cp $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json \
-          $(Build.ArtifactStagingDirectory)/trivy/
-        cp $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json \
-          $(Build.ArtifactStagingDirectory)/trivy/
-      displayName: "Prepare Trivy Reports for Publishing"
-
     # Publish Trivy Report
-    - publish: $(Build.ArtifactStagingDirectory)/trivy
+    - publish: $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json
       artifact: TrivyReport_${{ parameters.environment }}
-      displayName: "Publish Trivy Reports"
+      displayName: "Publish Trivy Report"
 
     # Fail pipeline if Trivy finds more than 1 HIGH or CRITICAL issue
     - script: |
         echo "📊 Running Trivy summary & policy enforcement..."
         python $(Build.SourcesDirectory)/org-devops-scripts/trivy/trivy_summary.py \
-          $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json
+          $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report.json
       displayName: "Trivy Summary & Policy Enforcement"
 
     # Publish summary JSON as artifact
@@ -471,22 +445,7 @@ stages:
       displayName: "Publish Trivy Summary Report"
       inputs:
         targetPath: "$(System.DefaultWorkingDirectory)/trivy_summary_report.json"
-        artifact: "trivy-summary-infra-dev-$(Build.BuildId)"
-        publishLocation: "pipeline"
-
-        # Fail pipeline if Trivy finds more than 1 HIGH or CRITICAL issue
-    - script: |
-        echo "📊 Running Trivy summary & policy enforcement..."
-        python $(Build.SourcesDirectory)/org-devops-scripts/trivy/trivy_summary.py \
-          $(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json
-      displayName: "Trivy Summary & Policy Enforcement"
-
-    # Publish summary JSON as artifact
-    - task: PublishPipelineArtifact@1
-      displayName: "Publish Trivy Summary Report"
-      inputs:
-        targetPath: "$(System.DefaultWorkingDirectory)/trivy_summary_report.json"
-        artifact: "trivy-summary-modules-$(Build.BuildId)"
+        artifact: "trivy-summary-$(Build.BuildId)"
         publishLocation: "pipeline"
 
 - stage: FeatureBranch_CostPlan_Approval
