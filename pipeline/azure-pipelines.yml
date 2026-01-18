@@ -397,34 +397,35 @@ stages:
         echo "Running Trivy Terraform config scan..."
         cd $(Build.SourcesDirectory)/Project03-DeployInfra
 
-        echo "Executing: trivy config . --format json --output trivy-report.json"
         echo "🔍 Trivy scan: infra-dev"
-        trivy config .\infra\dev\ --tf-vars .\infra\dev\terraform.tfvars \
-            --format json \
-            --output trivy-report-infra-dev.json || true
+        trivy config infra/dev --tf-vars infra/dev/terraform.tfvars \
+            --format json --output trivy-report-infra-dev.json || true
 
         echo "🔍 Trivy scan: modules"
-        trivy config .\modules \
-            --format json \
-            --output trivy-report-modules.json || true
+        trivy config modules \
+            --format json --output trivy-report-modules.json || true
 
-        echo "Verifying Trivy report..."
-        if [ -f trivy-report-infra-dev.json ]; then
-            echo "✅ Trivy report (infra-dev) generated successfully"
-            pwd
-        elif [ -f trivy-report-modules.json ]; then
-            echo "✅ Trivy report (modules) generated successfully"
-            pwd
+        echo "Verifying Trivy report files..."
+
+        # Infra
+        if [ -f trivy-report-infra-dev.json ] && [ -s trivy-report-infra-dev.json ]; then
+            echo "✅ Trivy report (infra-dev) found and not empty"
         else
-            echo "❌ Trivy (modules) did NOT generate a report!"
-            pwd
+            echo "⚠️ Trivy report (infra-dev) missing or empty, creating placeholder"
+            echo "{}" > trivy-report-infra-dev.json
+        fi
+
+        # Modules
+        if [ -f trivy-report-modules.json ] && [ -s trivy-report-modules.json ]; then
+            echo "✅ Trivy report (modules) found and not empty"
+        else
+            echo "⚠️ Trivy report (modules) missing or empty, creating placeholder"
             echo "{}" > trivy-report-modules.json
         fi
 
         pwd
-        ls -l trivy-report-infra-dev.json
-        ls -l trivy-report-modules.json
-      displayName: "Run Trivy Config Scan (v0.67.2 Compatible)"
+        ls -l trivy-report-*.json
+      displayName: "Run Trivy Config Scan (Linux-friendly)"
 
     # Check and copy Trivy report to known location
     - script: |
