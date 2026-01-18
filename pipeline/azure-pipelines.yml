@@ -449,7 +449,8 @@ stages:
 
         # Optional: list files
         pwd
-        ls -l "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-*.json"
+        ls -l "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-infra-dev.json"
+        ls -l "$(Build.SourcesDirectory)/Project03-DeployInfra/trivy-report-modules.json"
       displayName: "Verify Trivy Report File"
 
     - script: |
