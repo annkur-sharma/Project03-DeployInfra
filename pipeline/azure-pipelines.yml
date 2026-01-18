@@ -359,7 +359,7 @@ stages:
       displayName: "Publish TFLint Summary Report"
       inputs:
         targetPath: "$(System.DefaultWorkingDirectory)/tflint_summary_report.json"
-        artifact: TFLintReport_${{ parameters.environment }}
+        artifact: "tflint-summary-$(Build.BuildId)"
         publishLocation: "pipeline"
 
 - stage: FeatureBranchMerge_TrivyScan
@@ -445,7 +445,7 @@ stages:
       displayName: "Publish Trivy Summary Report"
       inputs:
         targetPath: "$(System.DefaultWorkingDirectory)/trivy_summary_report.json"
-        artifact: TrivyReport_${{ parameters.environment }}
+        artifact: "trivy-summary-$(Build.BuildId)"
         publishLocation: "pipeline"
 
 - stage: FeatureBranch_CostPlan_Approval
